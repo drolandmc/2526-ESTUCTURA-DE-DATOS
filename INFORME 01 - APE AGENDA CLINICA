@@ -1,0 +1,569 @@
+from datetime import datetime, date, time, timedelta
+from typing import List, Dict, Optional
+import os
+
+# ==================== CLASES PRINCIPALES ====================
+
+class Paciente:
+    """Clase que representa a un paciente de la clínica"""
+    
+    def __init__(self, id_paciente: int, nombre: str, apellido: str, telefono: str, email: str):
+        self.id_paciente = id_paciente
+        self.nombre = nombre
+        self.apellido = apellido
+        self.telefono = telefono
+        self.email = email
+    
+    def __str__(self):
+        return f"ID: {self.id_paciente} - {self.nombre} {self.apellido} - Tel: {self.telefono}"
+    
+    def obtener_info_completa(self):
+        return {
+            "id": self.id_paciente,
+            "nombre": self.nombre,
+            "apellido": self.apellido,
+            "telefono": self.telefono,
+            "email": self.email
+        }
+
+
+class Doctor:
+    """Clase que representa a un doctor de la clínica"""
+    
+    def __init__(self, id_doctor: int, nombre: str, apellido: str, especialidad: str):
+        self.id_doctor = id_doctor
+        self.nombre = nombre
+        self.apellido = apellido
+        self.especialidad = especialidad
+    
+    def __str__(self):
+        return f"Dr. {self.nombre} {self.apellido} - {self.especialidade}"
+
+
+class Cita:
+    """Clase que representa una cita médica"""
+    
+    def __init__(self, id_cita: int, paciente: Paciente, doctor: Doctor, fecha: date, hora: time, tipo_consulta: str):
+        self.id_cita = id_cita
+        self.paciente = paciente
+        self.doctor = doctor
+        self.fecha = fecha
+        self.hora = hora
+        self.tipo_consulta = tipo_consulta
+        self.estado = "Programada"  # Programada, Completada, Cancelada
+    
+    def __str__(self):
+        fecha_str = self.fecha.strftime("%d/%m/%Y")
+        hora_str = self.hora.strftime("%H:%M")
+        return f"Cita #{self.id_cita} - {fecha_str} {hora_str} - {self.paciente.nombre} con Dr. {self.doctor.nombre} ({self.tipo_consulta})"
+    
+    def obtener_info_completa(self):
+        return {
+            "id_cita": self.id_cita,
+            "paciente": self.paciente.obtener_info_completa(),
+            "doctor": {
+                "id": self.doctor.id_doctor,
+                "nombre": self.doctor.nombre,
+                "apellido": self.doctor.apellido,
+                "especialidad": self.doctor.especialidad
+            },
+            "fecha": self.fecha.strftime("%d/%m/%Y"),
+            "hora": self.hora.strftime("%H:%M"),
+            "tipo_consulta": self.tipo_consulta,
+            "estado": self.estado
+        }
+
+
+# ==================== GESTOR DE AGENDA ====================
+
+class AgendaClinica:
+    """Clase principal que gestiona toda la agenda de la clínica"""
+    
+    def __init__(self):
+        # Estructuras de datos para almacenar la información
+        self.pacientes: List[Paciente] = []
+        self.doctores: List[Doctor] = []
+        self.citas: List[Cita] = []
+        
+        # Matriz de disponibilidad (días x horas)
+        self.horarios_disponibles = self._inicializar_horarios()
+        
+        # Contadores para IDs
+        self.contador_pacientes = 1
+        self.contador_citas = 1
+        self.contador_doctores = 1
+        
+        # Inicializar algunos datos de ejemplo
+        self._inicializar_datos_ejemplo()
+    
+    def _inicializar_horarios(self) -> Dict[date, Dict[time, bool]]:
+        """Inicializa la matriz de disponibilidad para los próximos 7 días"""
+        horarios = {}
+        hoy = date.today()
+        
+        # Crear disponibilidad para los próximos 7 días
+        for i in range(7):
+            dia = hoy + timedelta(days=i)
+            horarios[dia] = {}
+            
+            # Horarios de atención: de 9:00 a 18:00 con intervalos de 30 minutos
+            hora_inicio = time(9, 0)
+            hora_fin = time(18, 0)
+            
+            hora_actual = hora_inicio
+            while hora_actual < hora_fin:
+                horarios[dia][hora_actual] = True  # True = disponible
+                # Añadir 30 minutos
+                minutos = hora_actual.hour * 60 + hora_actual.minute + 30
+                hora_actual = time(minutos // 60, minutos % 60)
+        
+        return horarios
+    
+    def _inicializar_datos_ejemplo(self):
+        """Inicializa algunos datos de ejemplo para pruebas"""
+        # Crear doctores de ejemplo
+        self.doctores.append(Doctor(self.contador_doctores, "Carlos", "Méndez", "Cardiología"))
+        self.contador_doctores += 1
+        self.doctores.append(Doctor(self.contador_doctores, "Ana", "García", "Pediatría"))
+        self.contador_doctores += 1
+        self.doctores.append(Doctor(self.contador_doctores, "Luis", "Fernández", "Dermatología"))
+        self.contador_doctores += 1
+        
+        # Crear pacientes de ejemplo
+        self.pacientes.append(Paciente(self.contador_pacientes, "María", "López", "555-1234", "maria@email.com"))
+        self.contador_pacientes += 1
+        self.pacientes.append(Paciente(self.contador_pacientes, "Juan", "Pérez", "555-5678", "juan@email.com"))
+        self.contador_pacientes += 1
+        
+        # Crear citas de ejemplo
+        fecha_ejemplo = date.today() + timedelta(days=1)
+        hora_ejemplo = time(10, 0)
+        
+        self.citas.append(Cita(
+            self.contador_citas, 
+            self.pacientes[0], 
+            self.doctores[0], 
+            fecha_ejemplo, 
+            hora_ejemplo,
+            "Consulta general"
+        ))
+        self.contador_citas += 1
+        self.horarios_disponibles[fecha_ejemplo][hora_ejemplo] = False  # Marcar como ocupado
+        
+        # Otra cita de ejemplo
+        hora_ejemplo2 = time(11, 30)
+        self.citas.append(Cita(
+            self.contador_citas, 
+            self.pacientes[1], 
+            self.doctores[1], 
+            fecha_ejemplo, 
+            hora_ejemplo2,
+            "Control rutinario"
+        ))
+        self.contador_citas += 1
+        self.horarios_disponibles[fecha_ejemplo][hora_ejemplo2] = False  # Marcar como ocupado
+    
+    # ==================== MÉTODOS PARA PACIENTES ====================
+    
+    def registrar_paciente(self):
+        """Registra un nuevo paciente en el sistema"""
+        print("\n" + "="*50)
+        print("REGISTRAR NUEVO PACIENTE")
+        print("="*50)
+        
+        try:
+            nombre = input("Nombre: ").strip()
+            apellido = input("Apellido: ").strip()
+            telefono = input("Teléfono: ").strip()
+            email = input("Email: ").strip()
+            
+            # Validaciones básicas
+            if not nombre or not apellido:
+                print("Error: Nombre y apellido son obligatorios")
+                return
+            
+            # Crear nuevo paciente
+            nuevo_paciente = Paciente(
+                self.contador_pacientes,
+                nombre,
+                apellido,
+                telefono,
+                email
+            )
+            
+            self.pacientes.append(nuevo_paciente)
+            self.contador_pacientes += 1
+            
+            print(f"\n✓ Paciente registrado exitosamente con ID: {nuevo_paciente.id_paciente}")
+            print(f"  {nuevo_paciente}")
+            
+        except Exception as e:
+            print(f"Error al registrar paciente: {e}")
+    
+    def listar_pacientes(self):
+        """Muestra todos los pacientes registrados"""
+        print("\n" + "="*50)
+        print("LISTA DE PACIENTES REGISTRADOS")
+        print("="*50)
+        
+        if not self.pacientes:
+            print("No hay pacientes registrados.")
+            return
+        
+        for paciente in self.pacientes:
+            print(paciente)
+    
+    # ==================== MÉTODOS PARA CITAS ====================
+    
+    def registrar_cita(self):
+        """Registra una nueva cita médica"""
+        print("\n" + "="*50)
+        print("REGISTRAR NUEVA CITA")
+        print("="*50)
+        
+        try:
+            # Verificar que haya pacientes y doctores
+            if not self.pacientes:
+                print("Error: No hay pacientes registrados. Registre al menos un paciente primero.")
+                return
+            
+            if not self.doctores:
+                print("Error: No hay doctores disponibles.")
+                return
+            
+            # Seleccionar paciente
+            print("\nSeleccione un paciente:")
+            self.listar_pacientes()
+            
+            try:
+                id_paciente = int(input("\nID del paciente: "))
+                paciente = next((p for p in self.pacientes if p.id_paciente == id_paciente), None)
+                
+                if not paciente:
+                    print("Error: ID de paciente no válido.")
+                    return
+            except ValueError:
+                print("Error: Debe ingresar un número válido.")
+                return
+            
+            # Seleccionar doctor
+            print("\nSeleccione un doctor:")
+            for i, doctor in enumerate(self.doctores, 1):
+                print(f"{i}. Dr. {doctor.nombre} {doctor.apellido} - {doctor.especialidad}")
+            
+            try:
+                opcion_doctor = int(input("\nNúmero del doctor: ")) - 1
+                
+                if opcion_doctor < 0 or opcion_doctor >= len(self.doctores):
+                    print("Error: Selección no válida.")
+                    return
+                
+                doctor = self.doctores[opcion_doctor]
+            except ValueError:
+                print("Error: Debe ingresar un número válido.")
+                return
+            
+            # Mostrar disponibilidad y seleccionar fecha
+            print("\nFechas disponibles (próximos 7 días):")
+            fechas_disponibles = list(self.horarios_disponibles.keys())
+            
+            for i, fecha_disp in enumerate(fechas_disponibles, 1):
+                fecha_str = fecha_disp.strftime("%d/%m/%Y")
+                print(f"{i}. {fecha_str}")
+            
+            try:
+                opcion_fecha = int(input("\nSeleccione una fecha: ")) - 1
+                
+                if opcion_fecha < 0 or opcion_fecha >= len(fechas_disponibles):
+                    print("Error: Selección no válida.")
+                    return
+                
+                fecha_seleccionada = fechas_disponibles[opcion_fecha]
+            except ValueError:
+                print("Error: Debe ingresar un número válido.")
+                return
+            
+            # Mostrar horarios disponibles para la fecha seleccionada
+            print(f"\nHorarios disponibles para el {fecha_seleccionada.strftime('%d/%m/%Y')}:")
+            horarios_disp = [hora for hora, disponible in self.horarios_disponibles[fecha_seleccionada].items() if disponible]
+            
+            if not horarios_disp:
+                print("No hay horarios disponibles para esta fecha.")
+                return
+            
+            for i, hora_disp in enumerate(horarios_disp, 1):
+                hora_str = hora_disp.strftime("%H:%M")
+                print(f"{i}. {hora_str}")
+            
+            try:
+                opcion_hora = int(input("\nSeleccione un horario: ")) - 1
+                
+                if opcion_hora < 0 or opcion_hora >= len(horarios_disp):
+                    print("Error: Selección no válida.")
+                    return
+                
+                hora_seleccionada = horarios_disp[opcion_hora]
+            except ValueError:
+                print("Error: Debe ingresar un número válido.")
+                return
+            
+            # Tipo de consulta
+            tipo_consulta = input("\nTipo de consulta (Ej: Control, Emergencia, Seguimiento): ").strip()
+            if not tipo_consulta:
+                tipo_consulta = "Consulta general"
+            
+            # Crear la cita
+            nueva_cita = Cita(
+                self.contador_citas,
+                paciente,
+                doctor,
+                fecha_seleccionada,
+                hora_seleccionada,
+                tipo_consulta
+            )
+            
+            self.citas.append(nueva_cita)
+            self.contador_citas += 1
+            
+            # Marcar el horario como ocupado
+            self.horarios_disponibles[fecha_seleccionada][hora_seleccionada] = False
+            
+            print("\n" + "="*50)
+            print("✓ CITA REGISTRADA EXITOSAMENTE")
+            print("="*50)
+            print(f"Cita ID: {nueva_cita.id_cita}")
+            print(f"Paciente: {paciente.nombre} {paciente.apellido}")
+            print(f"Doctor: Dr. {doctor.nombre} {doctor.apellido}")
+            print(f"Fecha: {fecha_seleccionada.strftime('%d/%m/%Y')}")
+            print(f"Hora: {hora_seleccionada.strftime('%H:%M')}")
+            print(f"Tipo: {tipo_consulta}")
+            
+        except Exception as e:
+            print(f"Error al registrar cita: {e}")
+    
+    def listar_citas(self):
+        """Muestra todas las citas registradas"""
+        print("\n" + "="*50)
+        print("LISTA DE CITAS REGISTRADAS")
+        print("="*50)
+        
+        if not self.citas:
+            print("No hay citas registradas.")
+            return
+        
+        # Opciones de filtrado
+        print("\nOpciones de visualización:")
+        print("1. Listar todas las citas")
+        print("2. Listar por fecha")
+        print("3. Listar por paciente")
+        
+        try:
+            opcion = int(input("\nSeleccione una opción: "))
+        except ValueError:
+            print("Opción no válida. Mostrando todas las citas...")
+            opcion = 1
+        
+        if opcion == 1:
+            # Mostrar todas las citas
+            for cita in self.citas:
+                print(cita)
+                
+        elif opcion == 2:
+            # Filtrar por fecha
+            fecha_str = input("Ingrese fecha (DD/MM/AAAA): ").strip()
+            try:
+                fecha_buscar = datetime.strptime(fecha_str, "%d/%m/%Y").date()
+                citas_filtradas = [c for c in self.citas if c.fecha == fecha_buscar]
+                
+                if citas_filtradas:
+                    print(f"\nCitas para el {fecha_buscar.strftime('%d/%m/%Y')}:")
+                    for cita in citas_filtradas:
+                        print(cita)
+                else:
+                    print(f"No hay citas para el {fecha_buscar.strftime('%d/%m/%Y')}")
+                    
+            except ValueError:
+                print("Formato de fecha inválido. Use DD/MM/AAAA")
+                
+        elif opcion == 3:
+            # Filtrar por paciente
+            nombre_buscar = input("Ingrese nombre o apellido del paciente: ").strip().lower()
+            citas_filtradas = [
+                c for c in self.citas 
+                if nombre_buscar in c.paciente.nombre.lower() or 
+                nombre_buscar in c.paciente.apellido.lower()
+            ]
+            
+            if citas_filtradas:
+                print(f"\nCitas para pacientes con '{nombre_buscar}':")
+                for cita in citas_filtradas:
+                    print(cita)
+            else:
+                print(f"No hay citas para pacientes con '{nombre_buscar}'")
+        else:
+            print("Opción no válida. Mostrando todas las citas...")
+            for cita in self.citas:
+                print(cita)
+    
+    # ==================== MÉTODOS PARA DISPONIBILIDAD ====================
+    
+    def ver_disponibilidad_turnos(self):
+        """Muestra la disponibilidad de turnos"""
+        print("\n" + "="*50)
+        print("DISPONIBILIDAD DE TURNOS")
+        print("="*50)
+        
+        # Mostrar fechas disponibles
+        print("\nFechas con disponibilidad (próximos 7 días):")
+        hoy = date.today()
+        
+        for i in range(7):
+            dia = hoy + timedelta(days=i)
+            dia_str = dia.strftime("%d/%m/%Y")
+            
+            # Contar horarios disponibles para este día
+            if dia in self.horarios_disponibles:
+                horarios_disp = sum(1 for disponible in self.horarios_disponibles[dia].values() if disponible)
+                print(f"{dia_str}: {horarios_disp} turnos disponibles")
+        
+        # Opción para ver detalle de un día específico
+        ver_detalle = input("\n¿Ver detalle de disponibilidad para un día específico? (S/N): ").strip().upper()
+        
+        if ver_detalle == 'S':
+            fecha_str = input("Ingrese fecha (DD/MM/AAAA): ").strip()
+            
+            try:
+                fecha_buscar = datetime.strptime(fecha_str, "%d/%m/%Y").date()
+                
+                if fecha_buscar in self.horarios_disponibles:
+                    print(f"\nHorarios disponibles para el {fecha_buscar.strftime('%d/%m/%Y')}:")
+                    print("-" * 30)
+                    
+                    horarios = self.horarios_disponibles[fecha_buscar]
+                    disponibles = [hora for hora, disponible in horarios.items() if disponible]
+                    
+                    if disponibles:
+                        for i, hora in enumerate(disponibles, 1):
+                            hora_str = hora.strftime("%H:%M")
+                            print(f"{i}. {hora_str}")
+                    else:
+                        print("No hay horarios disponibles para esta fecha.")
+                        
+                    # Mostrar citas ya agendadas para esta fecha
+                    citas_dia = [c for c in self.citas if c.fecha == fecha_buscar]
+                    if citas_dia:
+                        print(f"\nCitas ya agendadas para este día:")
+                        for cita in citas_dia:
+                            hora_str = cita.hora.strftime("%H:%M")
+                            print(f"  {hora_str}: {cita.paciente.nombre} {cita.paciente.apellido} con Dr. {cita.doctor.nombre}")
+                else:
+                    print("Fecha fuera del rango de disponibilidad (solo próximos 7 días).")
+                    
+            except ValueError:
+                print("Formato de fecha inválido. Use DD/MM/AAAA")
+    
+    # ==================== MÉTODOS DE REPORTES ====================
+    
+    def mostrar_reporte_estadisticas(self):
+        """Muestra un reporte estadístico del sistema"""
+        print("\n" + "="*50)
+        print("REPORTE ESTADÍSTICO DEL SISTEMA")
+        print("="*50)
+        
+        print(f"\n📊 RESUMEN GENERAL:")
+        print(f"  • Pacientes registrados: {len(self.pacientes)}")
+        print(f"  • Doctores disponibles: {len(self.doctores)}")
+        print(f"  • Citas programadas: {len(self.citas)}")
+        
+        # Citas por estado
+        if self.citas:
+            estados = {}
+            for cita in self.citas:
+                estados[cita.estado] = estados.get(cita.estado, 0) + 1
+            
+            print(f"\n📅 ESTADO DE CITAS:")
+            for estado, cantidad in estados.items():
+                print(f"  • {estado}: {cantidad}")
+        
+        # Próximas citas (hoy y mañana)
+        hoy = date.today()
+        manana = hoy + timedelta(days=1)
+        
+        citas_hoy = [c for c in self.citas if c.fecha == hoy]
+        citas_manana = [c for c in self.citas if c.fecha == manana]
+        
+        print(f"\n📅 PRÓXIMAS CITAS:")
+        print(f"  • Hoy ({hoy.strftime('%d/%m/%Y')}): {len(citas_hoy)} citas")
+        print(f"  • Mañana ({manana.strftime('%d/%m/%Y')}): {len(citas_manana)} citas")
+        
+        # Doctores con más citas
+        if self.citas:
+            print(f"\n👨‍⚕️ DOCTORES CON MÁS CITAS:")
+            citas_por_doctor = {}
+            for cita in self.citas:
+                nombre_doctor = f"Dr. {cita.doctor.nombre} {cita.doctor.apellido}"
+                citas_por_doctor[nombre_doctor] = citas_por_doctor.get(nombre_doctor, 0) + 1
+            
+            for doctor, cantidad in citas_por_doctor.items():
+                print(f"  • {doctor}: {cantidad} citas")
+    
+    # ==================== MÉTODO PARA MOSTRAR MENÚ ====================
+    
+    def mostrar_menu(self):
+        """Muestra el menú principal y gestiona las opciones"""
+        while True:
+            print("\n" + "="*50)
+            print("AGENDA CLÍNICA - SISTEMA DE GESTIÓN DE TURNOS")
+            print("="*50)
+            print("1. Registrar paciente")
+            print("2. Registrar cita")
+            print("3. Listar citas")
+            print("4. Ver disponibilidad de turnos")
+            print("5. Listar pacientes")
+            print("6. Reporte estadístico")
+            print("7. Salir")
+            print("="*50)
+            
+            try:
+                opcion = int(input("Seleccione una opción (1-7): "))
+                
+                if opcion == 1:
+                    self.registrar_paciente()
+                elif opcion == 2:
+                    self.registrar_cita()
+                elif opcion == 3:
+                    self.listar_citas()
+                elif opcion == 4:
+                    self.ver_disponibilidad_turnos()
+                elif opcion == 5:
+                    self.listar_pacientes()
+                elif opcion == 6:
+                    self.mostrar_reporte_estadisticas()
+                elif opcion == 7:
+                    print("\nGracias por usar el sistema de agenda clínica. ¡Hasta pronto!")
+                    break
+                else:
+                    print("Opción no válida. Por favor, seleccione una opción del 1 al 7.")
+                    
+            except ValueError:
+                print("Error: Debe ingresar un número válido.")
+            
+            # Pausa antes de continuar
+            input("\nPresione Enter para continuar...")
+
+
+# ==================== PROGRAMA PRINCIPAL ====================
+
+def main():
+    """Función principal del programa"""
+    print("Inicializando sistema de agenda clínica...")
+    
+    # Crear la agenda clínica
+    agenda = AgendaClinica()
+    
+    # Mostrar el menú principal
+    agenda.mostrar_menu()
+
+
+if __name__ == "__main__":
+    main()
