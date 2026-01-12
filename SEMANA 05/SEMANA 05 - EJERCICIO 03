@@ -1,0 +1,51 @@
+using System;
+using System.Collections.Generic;
+
+namespace CursoNotas
+{
+    // Clase que representa una asignatura
+    class Asignatura
+    {
+        public string Nombre { get; set; }
+        public double Nota { get; set; }
+
+        // Constructor
+        public Asignatura(string nombre)
+        {
+            Nombre = nombre;
+        }
+    }
+
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            // Lista de asignaturas
+            List<Asignatura> asignaturas = new List<Asignatura>
+            {
+                new Asignatura("Matemáticas"),
+                new Asignatura("Física"),
+                new Asignatura("Química"),
+                new Asignatura("Historia"),
+                new Asignatura("Lengua")
+            };
+
+            // Solicitar notas al usuario
+            foreach (Asignatura asignatura in asignaturas)
+            {
+                Console.Write("Introduce la nota de " + asignatura.Nombre + ": ");
+                asignatura.Nota = double.Parse(Console.ReadLine());
+            }
+
+            Console.WriteLine();
+
+            // Mostrar resultados
+            foreach (Asignatura asignatura in asignaturas)
+            {
+                Console.WriteLine("En " + asignatura.Nombre + " has sacado " + asignatura.Nota);
+            }
+
+            Console.ReadKey();
+        }
+    }
+}

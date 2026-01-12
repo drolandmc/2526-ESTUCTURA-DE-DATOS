@@ -1,0 +1,53 @@
+using System;
+using System.Collections.Generic;
+
+namespace CursoAsignaturas
+{
+    // Clase que representa un curso
+    class Curso
+    {
+        private List<string> asignaturas;
+
+        // Constructor
+        public Curso()
+        {
+            asignaturas = new List<string>();
+        }
+
+        // Método para agregar asignaturas
+        public void AgregarAsignatura(string asignatura)
+        {
+            asignaturas.Add(asignatura);
+        }
+
+        // Método para mostrar asignaturas
+        public void MostrarAsignaturas()
+        {
+            foreach (string asignatura in asignaturas)
+            {
+                Console.WriteLine("Yo estudio " + asignatura);
+            }
+        }
+    }
+
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            // Crear objeto de la clase Curso
+            Curso curso = new Curso();
+
+            // Agregar asignaturas
+            curso.AgregarAsignatura("Matemáticas");
+            curso.AgregarAsignatura("Física");
+            curso.AgregarAsignatura("Química");
+            curso.AgregarAsignatura("Historia");
+            curso.AgregarAsignatura("Lengua");
+
+            // Mostrar asignaturas
+            curso.MostrarAsignaturas();
+
+            Console.ReadKey();
+        }
+    }
+}

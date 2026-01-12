@@ -1,0 +1,62 @@
+using System;
+using System.Collections.Generic;
+
+namespace LoteriaPrimitiva
+{
+    // Clase que representa la Lotería
+    class Loteria
+    {
+        private List<int> numeros;
+
+        // Constructor
+        public Loteria()
+        {
+            numeros = new List<int>();
+        }
+
+        // Método para ingresar números
+        public void IngresarNumeros(int cantidad)
+        {
+            for (int i = 1; i <= cantidad; i++)
+            {
+                Console.Write("Introduce el número ganador " + i + ": ");
+                int numero = int.Parse(Console.ReadLine());
+                numeros.Add(numero);
+            }
+        }
+
+        // Método para ordenar los números
+        public void OrdenarNumeros()
+        {
+            numeros.Sort();
+        }
+
+        // Método para mostrar los números
+        public void MostrarNumeros()
+        {
+            Console.WriteLine("\nNúmeros ganadores ordenados:");
+            foreach (int numero in numeros)
+            {
+                Console.Write(numero + " ");
+            }
+            Console.WriteLine();
+        }
+    }
+
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            Loteria loteria = new Loteria();
+
+            // Cantidad típica de números de la lotería primitiva
+            int cantidadNumeros = 6;
+
+            loteria.IngresarNumeros(cantidadNumeros);
+            loteria.OrdenarNumeros();
+            loteria.MostrarNumeros();
+
+            Console.ReadKey();
+        }
+    }
+}
